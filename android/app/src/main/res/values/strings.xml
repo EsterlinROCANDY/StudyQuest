@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">StudyQuest</string>
+    <string name="title_activity_main">StudyQuest</string>
+    <string name="package_name">com.esterlin.studyquest</string>
+    <string name="custom_url_scheme">com.esterlin.studyquest</string>
+</resources>
