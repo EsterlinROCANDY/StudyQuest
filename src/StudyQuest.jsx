@@ -605,7 +605,7 @@ function GeneratorScreen({user, notes, stats, onStartQuiz, showToast, onCheckBad
       const res = await fetch("https://openrouter.ai/api/v1/chat/completions", {
         method:"POST",
         headers:{"Content-Type":"application/json","Authorization":`Bearer ${OPENROUTER_KEY}`},
-        body:JSON.stringify({model:"google/gemini-2.0-flash-exp:free",messages:[{role:"user",content:prompt}]})
+        body:JSON.stringify({model:"openai/gpt-4",messages:[{role:"user",content:prompt}]})
       });
       if (!res.ok) throw new Error(`Erreur réseau (${res.status})`);
       const data = await res.json();
