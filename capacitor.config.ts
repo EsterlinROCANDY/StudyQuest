@@ -3,7 +3,7 @@ import { CapacitorConfig } from '@capacitor/cli';
 const config: CapacitorConfig = {
   appId: 'com.esterlin.studyquest',
   appName: 'StudyQuest',
-  webDir: 'dist/public',
+  webDir: 'dist',
   server: {
     androidScheme: 'https'
   }
