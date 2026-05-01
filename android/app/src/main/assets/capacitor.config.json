@@ -1,8 +1,8 @@
 {
-	"appId": "com.esterlin.studyquest",
-	"appName": "StudyQuest",
-	"webDir": "dist/public",
-	"server": {
-		"androidScheme": "https"
-	}
+  "appId": "com.esterlin.studyquest",
+  "appName": "StudyQuest",
+  "webDir": "dist",
+  "server": {
+    "androidScheme": "https"
+  }
 }
