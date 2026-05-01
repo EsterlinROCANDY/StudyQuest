@@ -81,7 +81,8 @@ const getNextRank = xp => {
 };
 
 // ─── UTILITAIRES ──────────────────────────────────────────────────────────────
-const OPENROUTER_KEY = import.meta.env.VITE_OPENROUTER_API_KEY;
+const OPENROUTER_KEY = import.meta.env.VITE_OPENROUTER_API_KEY || "";
+if (!OPENROUTER_KEY) console.warn("⚠️ VITE_OPENROUTER_API_KEY manquante dans le fichier .env");
 
 const hashPwd = pwd => {
   let h = 5381;
@@ -148,7 +149,7 @@ function Toast({toasts}) {
 
 // ─── BADGE POPUP ──────────────────────────────────────────────────────────────
 function BadgePopup({badge, onClose}) {
-  const cb = useCallback(onClose, []);
+  const cb = useCallback(onClose, [onClose]);
   useEffect(() => { const t = setTimeout(cb, 4500); return () => clearTimeout(t); }, [cb]);
   if (!badge) return null;
   return (
@@ -431,6 +432,7 @@ function NotesScreen({user, notes, setNotes, showToast, onCheckBadges}) {
   const [sortBy, setSortBy] = useState("recent");
   const [confirmDel, setConfirmDel] = useState(null);
   const fileRef = useRef();
+  const imgRef = useRef();
 
   const filtered = notes
     .filter(n => tab==="Toutes" || n.subject===tab)
@@ -494,8 +496,9 @@ function NotesScreen({user, notes, setNotes, showToast, onCheckBadges}) {
           </div>
           <div style={{display:"flex",gap:8,marginBottom:14}}>
             <button onClick={()=>fileRef.current.click()} style={gs.btn("outline",{flex:1,padding:"10px",fontSize:12,width:"auto"})}>📄 Importer PDF</button>
-            <button onClick={()=>fileRef.current.click()} style={gs.btn("outline",{flex:1,padding:"10px",fontSize:12,width:"auto"})}>🖼️ Scanner</button>
-            <input ref={fileRef} type="file" accept=".pdf,image/*" style={{display:"none"}} onChange={handleFile}/>
+            <button onClick={()=>imgRef.current.click()} style={gs.btn("outline",{flex:1,padding:"10px",fontSize:12,width:"auto"})}>🖼️ Scanner</button>
+            <input ref={fileRef} type="file" accept=".pdf" style={{display:"none"}} onChange={handleFile}/>
+            <input ref={imgRef} type="file" accept="image/*" style={{display:"none"}} onChange={handleFile}/>
           </div>
           {view==="edit" && current && (
             <button style={gs.btn("danger")} onClick={()=>setConfirmDel(current.id)}>🗑️ Supprimer la note</button>
@@ -581,7 +584,7 @@ function NotesScreen({user, notes, setNotes, showToast, onCheckBadges}) {
 }
 
 // ─── GENERATOR ────────────────────────────────────────────────────────────────
-function GeneratorScreen({user, notes, stats, setStats, onStartQuiz, showToast}) {
+function GeneratorScreen({user, notes, stats, onStartQuiz, showToast, onCheckBadges}) {
   const [sel, setSel] = useState(null);
   const [nbQ, setNbQ] = useState(10);
   const [type, setType] = useState("QCM");
@@ -591,6 +594,11 @@ function GeneratorScreen({user, notes, stats, setStats, onStartQuiz, showToast})
 
   const generate = async () => {
     if (!sel) { showToast("Sélectionne une note","error","⚠️"); return; }
+    // Fix bug 1: vérifier la clé API avant d'appeler l'API
+    if (!OPENROUTER_KEY) {
+      showToast("Clé API manquante – configure VITE_OPENROUTER_API_KEY dans .env","error","🔑");
+      return;
+    }
     setLoading(true);
     try {
       const prompt = `Tu es un professeur expert. À partir du cours suivant, génère exactement ${nbQ} questions de type "${type}" niveau "${diff}" en français.\n\nCours (${sel.subject}) :\n${sel.content.substring(0,2500)}\n\nRéponds UNIQUEMENT avec un tableau JSON valide sans markdown ni explication :\n[{"question":"...","type":"${type}","options":["A...","B...","C...","D..."],"correct":0,"explanation":"..."}]\nPour Vrai/Faux: options=["Vrai","Faux"], correct=0 ou 1\nPour Réponse courte: options=[], correct="réponse attendue"`;
@@ -611,6 +619,8 @@ function GeneratorScreen({user, notes, stats, setStats, onStartQuiz, showToast})
       const nh = [entry,...hist].slice(0,10);
       setHist(nh); DB.saveQHist(user.id, nh);
       showToast(`${questions.length} questions générées !`,"success","🤖");
+      // Fix bug 7: appeler onCheckBadges après génération réussie
+      if (onCheckBadges) onCheckBadges(null);
       onStartQuiz({questions, note:sel});
     } catch(e) {
       showToast("Erreur: "+e.message,"error","❌");
@@ -739,9 +749,15 @@ function QuizScreen({quizData, user, stats, setStats, onFinish, onBack, showToas
     if (isShort) correct = shortAns.trim().toLowerCase().split(/\s+/).some(w => String(q.correct).toLowerCase().includes(w) && w.length>2);
     else correct = selected===q.correct;
     const r = {correct, answer:isShort?shortAns:selected, correctAnswer:q.correct, question:q.question, explanation:q.explanation};
-    setResults(prev => [...prev, r]);
+    // Fix bug: stocker dans variable locale car setResults est async
+    const newResults = [...results, r];
+    setResults(newResults);
     if (correct) { setScore(s=>s+1); showToast("+10 XP ! 🎉","success","✅"); setXpAnim(Date.now()); }
     setAnswered(true);
+    // Fix bug: si dernière question, finir avec les résultats complets (pas l'état stale)
+    if (idx+1>=questions.length) {
+      setTimeout(() => finishQuiz(newResults), 50);
+    }
   };
 
   const finishQuiz = (finalResults) => {
@@ -773,9 +789,8 @@ function QuizScreen({quizData, user, stats, setStats, onFinish, onBack, showToas
   };
 
   const next = () => {
-    const newResults = [...results];
-    if (idx+1>=questions.length) finishQuiz(newResults);
-    else { setIdx(i=>i+1); setSelected(null); setAnswered(false); setShortAns(""); }
+    // Note: finishQuiz est maintenant appelé directement depuis check() pour la dernière question
+    if (idx+1<questions.length) { setIdx(i=>i+1); setSelected(null); setAnswered(false); setShortAns(""); }
   };
 
   const lastResult = results[results.length-1];
@@ -1414,7 +1429,7 @@ export default function StudyQuest() {
     switch(tab) {
       case"home": return <HomeScreen user={user} stats={stats} notes={notes} onNav={setTab}/>;
       case"notes": return <NotesScreen user={user} notes={notes} setNotes={n=>{setNotes(n);DB.saveNotes(user.id,n);}} showToast={showToast} onCheckBadges={checkBadges}/>;
-      case"quiz": return <GeneratorScreen user={user} notes={notes} stats={stats} setStats={handleSetStats} onStartQuiz={d=>{setQuizData(d);setTab("quiz_active");}} showToast={showToast} onCheckBadges={checkBadges}/>;
+      case"quiz": return <GeneratorScreen user={user} notes={notes} stats={stats} onStartQuiz={d=>{setQuizData(d);setTab("quiz_active");}} showToast={showToast} onCheckBadges={checkBadges}/>;
       case"stats": return <StatsScreen stats={stats}/>;
       case"profile": return <ProfileScreen user={user} stats={stats} notes={notes} onLogout={logout} showToast={showToast} setStats={handleSetStats}/>;
       default: return <HomeScreen user={user} stats={stats} notes={notes} onNav={setTab}/>;
