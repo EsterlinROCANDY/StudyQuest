@@ -27,7 +27,7 @@ jobs:
           java-version: '17'
 
       - name: Install dependencies
-        run: pnpm install
+        run: pnpm install && pnpm add -D typescript
 
       - name: Build
         run: pnpm run build
