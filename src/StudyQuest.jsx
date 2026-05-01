@@ -81,7 +81,7 @@ const getNextRank = xp => {
 };
 
 // ─── UTILITAIRES ──────────────────────────────────────────────────────────────
-const GEMINI_KEY = import.meta.env.VITE_GOOGLE_API_KEY;
+const OPENROUTER_KEY = import.meta.env.VITE_OPENROUTER_API_KEY;
 
 const hashPwd = pwd => {
   let h = 5381;
@@ -594,13 +594,14 @@ function GeneratorScreen({user, notes, stats, setStats, onStartQuiz, showToast})
     setLoading(true);
     try {
       const prompt = `Tu es un professeur expert. À partir du cours suivant, génère exactement ${nbQ} questions de type "${type}" niveau "${diff}" en français.\n\nCours (${sel.subject}) :\n${sel.content.substring(0,2500)}\n\nRéponds UNIQUEMENT avec un tableau JSON valide sans markdown ni explication :\n[{"question":"...","type":"${type}","options":["A...","B...","C...","D..."],"correct":0,"explanation":"..."}]\nPour Vrai/Faux: options=["Vrai","Faux"], correct=0 ou 1\nPour Réponse courte: options=[], correct="réponse attendue"`;
-      const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_KEY}`, {
-        method:"POST", headers:{"Content-Type":"application/json"},
-        body:JSON.stringify({contents:[{parts:[{text:prompt}]}]})
+      const res = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+        method:"POST",
+        headers:{"Content-Type":"application/json","Authorization":`Bearer ${OPENROUTER_KEY}`},
+        body:JSON.stringify({model:"google/gemini-2.0-flash-exp:free",messages:[{role:"user",content:prompt}]})
       });
       if (!res.ok) throw new Error(`Erreur réseau (${res.status})`);
       const data = await res.json();
-      let text = data?.candidates?.[0]?.content?.parts?.[0]?.text || "";
+      let text = data?.choices?.[0]?.message?.content || "";
       text = text.replace(/```json|```/g,"").trim();
       const match = text.match(/\[[\s\S]*\]/);
       if (!match) throw new Error("Réponse IA invalide");
