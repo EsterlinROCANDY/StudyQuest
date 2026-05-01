@@ -594,7 +594,7 @@ function GeneratorScreen({user, notes, stats, setStats, onStartQuiz, showToast})
     setLoading(true);
     try {
       const prompt = `Tu es un professeur expert. À partir du cours suivant, génère exactement ${nbQ} questions de type "${type}" niveau "${diff}" en français.\n\nCours (${sel.subject}) :\n${sel.content.substring(0,2500)}\n\nRéponds UNIQUEMENT avec un tableau JSON valide sans markdown ni explication :\n[{"question":"...","type":"${type}","options":["A...","B...","C...","D..."],"correct":0,"explanation":"..."}]\nPour Vrai/Faux: options=["Vrai","Faux"], correct=0 ou 1\nPour Réponse courte: options=[], correct="réponse attendue"`;
-      const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_KEY}`, {
+      const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_KEY}`, {
         method:"POST", headers:{"Content-Type":"application/json"},
         body:JSON.stringify({contents:[{parts:[{text:prompt}]}]})
       });
